@@ -1,0 +1,36 @@
+class Player {
+    constructor() {
+        this.x = 1.5;
+        this.y = 1.5;
+        this.angle = 0;
+        this.speed = 0.1;
+        this.turnSpeed = 0.05;
+        this.health = 100;
+        this.ammo = 30;
+    }
+
+    move(dx, dy, map) {
+        const newX = this.x + dx;
+        const newY = this.y + dy;
+        
+        if (!this.checkCollision(newX, newY, map)) {
+            this.x = newX;
+            this.y = newY;
+        }
+    }
+
+    checkCollision(x, y, map) {
+        const mapX = Math.floor(x);
+        const mapY = Math.floor(y);
+        return map[mapY] && map[mapY][mapX] === 1;
+    }
+
+    takeDamage(amount) {
+        this.health = Math.max(0, this.health - amount);
+        return this.health <= 0;
+    }
+
+    addAmmo(amount) {
+        this.ammo = Math.min(100, this.ammo + amount);
+    }
+} 
