@@ -181,67 +181,74 @@ class Renderer {
         enemies.forEach(enemy => {
             if (enemy.health <= 0) return; // Skip dead enemies
 
-            // Calculate angle and distance to enemy
+            // Calculate enemy position relative to player
             const dx = enemy.x - player.x;
             const dy = enemy.y - player.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx);
             
-            // Calculate relative angle to player's view
-            let relativeAngle = this.normalizeAngle(angle - player.angle);
+            // Calculate distance and angle
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            let angle = Math.atan2(dy, dx) - player.angle;
+            
+            // Normalize angle
+            while (angle > Math.PI) angle -= 2 * Math.PI;
+            while (angle < -Math.PI) angle += 2 * Math.PI;
             
             // Only draw if enemy is in front of player and within view distance
-            if (Math.abs(relativeAngle) < Math.PI / 2 && distance < 20) {
-                // Check if there's a clear line of sight to the enemy
-                if (this.hasLineOfSight(player, enemy, map)) {
+            if (Math.abs(angle) < Math.PI / 2 && distance < 20) {
+                // Check if there's a clear line of sight
+                if (this.hasLineOfSight(player.x, player.y, enemy.x, enemy.y, map)) {
                     // Calculate screen position
-                    const screenX = (relativeAngle / (Math.PI / 2)) * (this.canvas.width / 2) + this.canvas.width / 2;
+                    const screenX = (angle / (Math.PI / 2)) * (this.canvas.width / 2) + this.canvas.width / 2;
                     const screenY = this.canvas.height / 2;
                     
                     // Calculate size based on distance
                     const size = Math.min(100, 1000 / distance);
                     
-                    // Draw enemy
-                    this.ctx.save();
-                    this.ctx.translate(screenX, screenY);
-                    this.ctx.scale(size / 100, size / 100);
-                    
                     // Draw enemy body
                     this.ctx.fillStyle = this.getEnemyColor(enemy.type);
-                    this.ctx.beginPath();
-                    this.ctx.arc(0, 0, 50, 0, Math.PI * 2);
-                    this.ctx.fill();
+                    this.ctx.fillRect(screenX - size/2, screenY - size, size, size);
                     
-                    // Draw enemy eyes
-                    this.ctx.fillStyle = '#fff';
-                    this.ctx.beginPath();
-                    this.ctx.arc(-20, -10, 10, 0, Math.PI * 2);
-                    this.ctx.arc(20, -10, 10, 0, Math.PI * 2);
-                    this.ctx.fill();
+                    // Draw enemy legs (moving based on time)
+                    const legOffset = Math.sin(Date.now() / 200) * 10;
+                    this.ctx.fillStyle = '#8B4513'; // Brown color for legs
                     
-                    // Draw enemy pupils
-                    this.ctx.fillStyle = '#f00';
-                    this.ctx.beginPath();
-                    this.ctx.arc(-20, -10, 5, 0, Math.PI * 2);
-                    this.ctx.arc(20, -10, 5, 0, Math.PI * 2);
-                    this.ctx.fill();
+                    // Left leg
+                    this.ctx.fillRect(screenX - size/4, screenY, size/6, size/2 + legOffset);
+                    // Right leg
+                    this.ctx.fillRect(screenX + size/12, screenY, size/6, size/2 - legOffset);
                     
-                    this.ctx.restore();
+                    // Draw health bar
+                    const healthBarWidth = size;
+                    const healthBarHeight = 5;
+                    const healthPercentage = enemy.health / enemy.maxHealth;
+                    
+                    // Background (red)
+                    this.ctx.fillStyle = '#FF0000';
+                    this.ctx.fillRect(screenX - healthBarWidth/2, screenY - size - 10, healthBarWidth, healthBarHeight);
+                    
+                    // Health (green)
+                    this.ctx.fillStyle = '#00FF00';
+                    this.ctx.fillRect(screenX - healthBarWidth/2, screenY - size - 10, healthBarWidth * healthPercentage, healthBarHeight);
+                    
+                    // Health bar border
+                    this.ctx.strokeStyle = '#000000';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(screenX - healthBarWidth/2, screenY - size - 10, healthBarWidth, healthBarHeight);
                 }
             }
         });
     }
 
-    hasLineOfSight(player, enemy, map) {
-        const dx = enemy.x - player.x;
-        const dy = enemy.y - player.y;
+    hasLineOfSight(playerX, playerY, enemyX, enemyY, map) {
+        const dx = enemyX - playerX;
+        const dy = enemyY - playerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         // Check points along the line of sight
         const steps = Math.ceil(distance * 2); // Check every 0.5 units
         for (let i = 1; i < steps; i++) {
-            const checkX = player.x + (dx * i / steps);
-            const checkY = player.y + (dy * i / steps);
+            const checkX = playerX + (dx * i / steps);
+            const checkY = playerY + (dy * i / steps);
             
             // Check if point is in a wall
             const mapX = Math.floor(checkX);
@@ -256,19 +263,13 @@ class Renderer {
         return true; // Clear line of sight
     }
 
-    getEnemyColor(enemy) {
-        switch(enemy.type) {
-            case 'imp': return '#8b0000';
-            case 'cacodemon': return '#ff4500';
-            case 'baron': return '#006400';
-            default: return '#8b0000';
+    getEnemyColor(type) {
+        switch(type) {
+            case 'imp': return '#FF4500'; // Orange-red
+            case 'cacodemon': return '#FF0000'; // Red
+            case 'baron': return '#8B0000'; // Dark red
+            default: return '#FF0000';
         }
-    }
-
-    normalizeAngle(angle) {
-        while (angle > Math.PI) angle -= Math.PI * 2;
-        while (angle < -Math.PI) angle += Math.PI * 2;
-        return angle;
     }
 
     drawProjectiles(gameState) {
