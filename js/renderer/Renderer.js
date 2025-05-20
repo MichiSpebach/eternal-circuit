@@ -78,62 +78,84 @@ class Renderer {
     }
 
     drawEnemies(gameState) {
-        const { enemies, player } = gameState;
-        const fov = Math.PI / 3;
+        const { player, enemies, map } = gameState;
         
-        for (const enemy of enemies) {
-            // Calculate angle to enemy
+        enemies.forEach(enemy => {
+            if (enemy.health <= 0) return; // Skip dead enemies
+
+            // Calculate angle and distance to enemy
             const dx = enemy.x - player.x;
             const dy = enemy.y - player.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx);
             
-            // Check if enemy is in field of view
-            const angleDiff = this.normalizeAngle(angle - player.angle);
-            if (Math.abs(angleDiff) > fov / 2) continue;
+            // Calculate relative angle to player's view
+            let relativeAngle = this.normalizeAngle(angle - player.angle);
             
-            // Calculate screen position
-            const screenX = (angleDiff + fov/2) / fov * this.canvas.width;
-            const screenY = this.canvas.height / 2;
-            
-            // Calculate size based on distance
-            const size = Math.min(100, 300 / distance);
-            
-            // Draw enemy sprite
-            this.ctx.save();
-            this.ctx.translate(screenX, screenY);
-            
-            // Enemy body
-            this.ctx.fillStyle = this.getEnemyColor(enemy);
-            this.ctx.beginPath();
-            this.ctx.arc(0, 0, size/2, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // Enemy eyes
-            this.ctx.fillStyle = '#ff0';
-            this.ctx.beginPath();
-            this.ctx.arc(-size/4, -size/4, size/8, 0, Math.PI * 2);
-            this.ctx.arc(size/4, -size/4, size/8, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // Enemy mouth
-            if (enemy.isAttacking) {
-                this.ctx.fillStyle = '#f00';
-                this.ctx.beginPath();
-                this.ctx.arc(0, size/4, size/4, 0, Math.PI);
-                this.ctx.fill();
+            // Only draw if enemy is in front of player
+            if (Math.abs(relativeAngle) < Math.PI / 2) {
+                // Check if there's a clear line of sight to the enemy
+                if (this.hasLineOfSight(player, enemy, map)) {
+                    // Calculate screen position
+                    const screenX = (relativeAngle / (Math.PI / 2)) * (this.canvas.width / 2) + this.canvas.width / 2;
+                    const screenY = this.canvas.height / 2;
+                    
+                    // Calculate size based on distance
+                    const size = Math.min(100, 1000 / distance);
+                    
+                    // Draw enemy
+                    this.ctx.save();
+                    this.ctx.translate(screenX, screenY);
+                    this.ctx.scale(size / 100, size / 100);
+                    
+                    // Draw enemy body
+                    this.ctx.fillStyle = this.getEnemyColor(enemy.type);
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, 0, 50, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Draw enemy eyes
+                    this.ctx.fillStyle = '#fff';
+                    this.ctx.beginPath();
+                    this.ctx.arc(-20, -10, 10, 0, Math.PI * 2);
+                    this.ctx.arc(20, -10, 10, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Draw enemy pupils
+                    this.ctx.fillStyle = '#f00';
+                    this.ctx.beginPath();
+                    this.ctx.arc(-20, -10, 5, 0, Math.PI * 2);
+                    this.ctx.arc(20, -10, 5, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.restore();
+                }
             }
+        });
+    }
+
+    hasLineOfSight(player, enemy, map) {
+        const dx = enemy.x - player.x;
+        const dy = enemy.y - player.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Check points along the line of sight
+        const steps = Math.ceil(distance * 2); // Check every 0.5 units
+        for (let i = 1; i < steps; i++) {
+            const checkX = player.x + (dx * i / steps);
+            const checkY = player.y + (dy * i / steps);
             
-            // Death animation
-            if (enemy.health <= 0) {
-                this.ctx.fillStyle = 'rgba(255, 0, 0, ' + (1 - enemy.deathAnimation) + ')';
-                this.ctx.beginPath();
-                this.ctx.arc(0, 0, size/2, 0, Math.PI * 2);
-                this.ctx.fill();
+            // Check if point is in a wall
+            const mapX = Math.floor(checkX);
+            const mapY = Math.floor(checkY);
+            
+            if (mapX >= 0 && mapX < map[0].length && 
+                mapY >= 0 && mapY < map.length && 
+                map[mapY][mapX] === 1) {
+                return false; // Wall in the way
             }
-            
-            this.ctx.restore();
         }
+        return true; // Clear line of sight
     }
 
     getEnemyColor(enemy) {
