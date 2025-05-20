@@ -30,8 +30,12 @@ class Player {
     }
 
     takeDamage(amount) {
-        this.health = Math.max(0, this.health - amount);
-        return this.health <= 0;
+        this.health -= amount;
+        if (this.health <= 0) {
+            this.health = 0;
+            return true; // Player is dead
+        }
+        return false; // Player is still alive
     }
 
     addAmmo(amount) {

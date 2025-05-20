@@ -367,6 +367,7 @@ class Game {
                             this.showGameOver();
                             return;
                         }
+                        this.audioManager.createPlayerHurtSound();
                     }
                 }
 
