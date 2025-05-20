@@ -40,17 +40,67 @@ class Renderer {
         
         for (let i = 0; i < numRays; i++) {
             const rayAngle = player.angle - fov/2 + angleStep * i;
-            const distance = this.castRay(rayAngle, player, map);
+            const { distance, wallContent } = this.castRay(rayAngle, player, map);
             
             const wallHeight = (this.canvas.height / distance) * 0.5;
             const wallX = i;
             const wallY = (this.canvas.height - wallHeight) / 2;
             
+            // Draw base wall
             const brightness = Math.max(0, 1 - distance / 20);
             const color = Math.floor(brightness * 255);
             
-            this.ctx.fillStyle = `rgb(${color}, ${color}, ${color})`;
-            this.ctx.fillRect(wallX, wallY, 1, wallHeight);
+            if (wallContent === 1) { // Regular wall
+                this.ctx.fillStyle = `rgb(${color}, ${color}, ${color})`;
+                this.ctx.fillRect(wallX, wallY, 1, wallHeight);
+            } else if (wallContent === 6 || wallContent === 7) { // Flower wall
+                // Draw wall with flower pattern
+                this.ctx.fillStyle = '#8B4513'; // Brown base color
+                this.ctx.fillRect(wallX, wallY, 1, wallHeight);
+                
+                // Add flower pattern
+                const flowerSize = Math.min(5, wallHeight / 4);
+                const flowerX = wallX;
+                const flowerY = wallY + Math.random() * (wallHeight - flowerSize);
+                
+                // Draw flower
+                this.ctx.fillStyle = '#FF69B4'; // Pink
+                this.ctx.beginPath();
+                this.ctx.arc(flowerX, flowerY, flowerSize/2, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw petals
+                this.ctx.fillStyle = '#FFB6C1'; // Light pink
+                for (let p = 0; p < 5; p++) {
+                    const angle = (p * Math.PI * 2) / 5;
+                    const petalX = flowerX + Math.cos(angle) * flowerSize/2;
+                    const petalY = flowerY + Math.sin(angle) * flowerSize/2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(petalX, petalY, flowerSize/4, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                
+                // Draw center
+                this.ctx.fillStyle = '#FFD700'; // Gold
+                this.ctx.beginPath();
+                this.ctx.arc(flowerX, flowerY, flowerSize/4, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                if (wallContent === 7) { // Add leaves for type 7
+                    this.ctx.fillStyle = '#228B22'; // Forest green
+                    for (let l = 0; l < 2; l++) {
+                        const angle = (l * Math.PI) + Math.PI/4;
+                        const leafX = flowerX + Math.cos(angle) * flowerSize;
+                        const leafY = flowerY + Math.sin(angle) * flowerSize;
+                        this.ctx.beginPath();
+                        this.ctx.ellipse(leafX, leafY, flowerSize/2, flowerSize/4, angle, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+            } else if (wallContent === 2) { // Decoration
+                this.ctx.fillStyle = '#A0522D'; // Sienna
+                this.ctx.fillRect(wallX, wallY, 1, wallHeight);
+            }
         }
     }
 
@@ -60,6 +110,7 @@ class Renderer {
         
         let distance = 0;
         let hit = false;
+        let wallContent = 0;
         
         while (!hit && distance < 20) {
             distance += 0.1;
@@ -69,12 +120,13 @@ class Renderer {
             if (testX < 0 || testX >= map[0].length || testY < 0 || testY >= map.length) {
                 hit = true;
                 distance = 20;
-            } else if (map[testY][testX] === 1) {
+            } else if (map[testY][testX] > 0) {
                 hit = true;
+                wallContent = map[testY][testX];
             }
         }
         
-        return distance;
+        return { distance, wallContent };
     }
 
     drawEnemies(gameState) {

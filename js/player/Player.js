@@ -20,9 +20,13 @@ class Player {
     }
 
     checkCollision(x, y, map) {
+        if (x < 0 || x >= map[0].length || y < 0 || y >= map.length) {
+            return true;
+        }
+
         const mapX = Math.floor(x);
         const mapY = Math.floor(y);
-        return map[mapY] && map[mapY][mapX] === 1;
+        return map[mapY][mapX] > 0;
     }
 
     takeDamage(amount) {

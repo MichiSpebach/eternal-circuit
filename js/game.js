@@ -46,75 +46,183 @@ class Game {
     }
 
     generateLevel() {
-        const width = 20;
-        const height = 20;
+        const width = 40;  // Even larger map size
+        const height = 40;
         const map = Array(height).fill().map(() => Array(width).fill(1));
 
-        // Generate rooms
-        const numRooms = 5 + Math.floor(this.level / 2);
+        // Generate main rooms with different levels
+        const numRooms = 6 + Math.floor(this.level / 2);
         const rooms = [];
+        const levels = [0, 1, 2]; // Three different height levels
 
         for (let i = 0; i < numRooms; i++) {
-            const roomWidth = 3 + Math.floor(Math.random() * 4);
-            const roomHeight = 3 + Math.floor(Math.random() * 4);
+            const roomWidth = 5 + Math.floor(Math.random() * 8);  // 5-12 tiles wide
+            const roomHeight = 5 + Math.floor(Math.random() * 8);  // 5-12 tiles high
             const x = 1 + Math.floor(Math.random() * (width - roomWidth - 2));
             const y = 1 + Math.floor(Math.random() * (height - roomHeight - 2));
+            const level = levels[Math.floor(Math.random() * levels.length)];
 
             // Check if room overlaps with existing rooms
             let overlaps = false;
             for (const room of rooms) {
-                if (x < room.x + room.width + 1 &&
-                    x + roomWidth + 1 > room.x &&
-                    y < room.y + room.height + 1 &&
-                    y + roomHeight + 1 > room.y) {
+                if (x < room.x + room.width + 3 &&  // More spacing between rooms
+                    x + roomWidth + 3 > room.x &&
+                    y < room.y + room.height + 3 &&
+                    y + roomHeight + 3 > room.y) {
                     overlaps = true;
                     break;
                 }
             }
 
             if (!overlaps) {
-                rooms.push({ x, y, width: roomWidth, height: roomHeight });
-                // Carve out room
+                rooms.push({ x, y, width: roomWidth, height: roomHeight, level });
+                // Carve out room with level-specific features
                 for (let ry = y; ry < y + roomHeight; ry++) {
                     for (let rx = x; rx < x + roomWidth; rx++) {
                         map[ry][rx] = 0;
+                        
+                        // Add level-specific features
+                        if (level === 1) {
+                            // Middle level: Add some platforms
+                            if (Math.random() < 0.1 && rx > x + 2 && rx < x + roomWidth - 2) {
+                                map[ry][rx] = 3; // Platform
+                            }
+                        } else if (level === 2) {
+                            // Upper level: Add some bridges
+                            if (Math.random() < 0.05 && ry > y + 2 && ry < y + roomHeight - 2) {
+                                map[ry][rx] = 4; // Bridge
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Connect rooms with corridors
+        // Connect rooms with complex corridors and stairs
         for (let i = 0; i < rooms.length - 1; i++) {
             const room1 = rooms[i];
             const room2 = rooms[i + 1];
             
-            // Connect room centers
             const x1 = Math.floor(room1.x + room1.width / 2);
             const y1 = Math.floor(room1.y + room1.height / 2);
             const x2 = Math.floor(room2.x + room2.width / 2);
             const y2 = Math.floor(room2.y + room2.height / 2);
 
-            // Create L-shaped corridor
-            for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
-                map[y1][x] = 0;
-            }
-            for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-                map[y][x2] = 0;
+            // Create different corridor types based on level difference
+            if (room1.level !== room2.level) {
+                // Create stairs between different levels
+                const midX = Math.floor((x1 + x2) / 2);
+                const midY = Math.floor((y1 + y2) / 2);
+                
+                // Create stairwell
+                for (let x = Math.min(x1, midX); x <= Math.max(x1, midX); x++) {
+                    map[y1][x] = 0;
+                }
+                for (let y = Math.min(y1, midY); y <= Math.max(y1, midY); y++) {
+                    map[y][midX] = 0;
+                }
+                for (let x = Math.min(midX, x2); x <= Math.max(midX, x2); x++) {
+                    map[midY][x] = 0;
+                }
+                for (let y = Math.min(midY, y2); y <= Math.max(midY, y2); y++) {
+                    map[y][x2] = 0;
+                }
+
+                // Add stairs
+                const steps = Math.abs(room1.level - room2.level) * 3;
+                for (let s = 0; s < steps; s++) {
+                    const stepX = midX + Math.floor(s / 2);
+                    const stepY = midY + (s % 2);
+                    if (stepX >= 0 && stepX < width && stepY >= 0 && stepY < height) {
+                        map[stepY][stepX] = 5; // Stair
+                    }
+                }
+            } else {
+                // Create regular corridor
+                if (Math.random() < 0.5) {
+                    // L-shaped corridor
+                    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+                        map[y1][x] = 0;
+                    }
+                    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+                        map[y][x2] = 0;
+                    }
+                } else {
+                    // Z-shaped corridor
+                    const midX = Math.floor((x1 + x2) / 2);
+                    const midY = Math.floor((y1 + y2) / 2);
+                    
+                    for (let x = Math.min(x1, midX); x <= Math.max(x1, midX); x++) {
+                        map[y1][x] = 0;
+                    }
+                    for (let y = Math.min(y1, midY); y <= Math.max(y1, midY); y++) {
+                        map[y][midX] = 0;
+                    }
+                    for (let x = Math.min(midX, x2); x <= Math.max(midX, x2); x++) {
+                        map[midY][x] = 0;
+                    }
+                    for (let y = Math.min(midY, y2); y <= Math.max(midY, y2); y++) {
+                        map[y][x2] = 0;
+                    }
+                }
             }
         }
 
-        // Ensure player starting position is clear
-        map[1][1] = 0;
-        map[1][2] = 0;
-        map[2][1] = 0;
-        map[2][2] = 0;
+        // Ensure player starting position is clear and has some space
+        for (let y = 1; y <= 3; y++) {
+            for (let x = 1; x <= 3; x++) {
+                map[y][x] = 0;
+            }
+        }
+
+        // Add flower wallpaper patterns to walls
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (map[y][x] === 1) {
+                    // Create flower patterns
+                    if (Math.random() < 0.3) { // Increased chance for flowers
+                        const directions = [
+                            [0, 1], [1, 0], [0, -1], [-1, 0],
+                            [1, 1], [1, -1], [-1, 1], [-1, -1] // Diagonal patterns
+                        ];
+                        
+                        // Create flower clusters
+                        const numFlowers = 1 + Math.floor(Math.random() * 3); // 1-3 flowers per cluster
+                        for (let f = 0; f < numFlowers; f++) {
+                            const dir = directions[Math.floor(Math.random() * directions.length)];
+                            const flowerX = x + dir[0];
+                            const flowerY = y + dir[1];
+                            
+                            if (flowerX >= 0 && flowerX < width &&
+                                flowerY >= 0 && flowerY < height &&
+                                map[flowerY][flowerX] === 0) {
+                                // Create flower pattern (value 6 for flowers)
+                                map[y][x] = 6;
+                                
+                                // Add some leaves around the flower
+                                if (Math.random() < 0.5) {
+                                    const leafDir = directions[Math.floor(Math.random() * 4)];
+                                    const leafX = x + leafDir[0];
+                                    const leafY = y + leafDir[1];
+                                    if (leafX >= 0 && leafX < width &&
+                                        leafY >= 0 && leafY < height &&
+                                        map[leafY][leafX] === 0) {
+                                        map[y][x] = 7; // Mark as flower with leaves
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         return map;
     }
 
     spawnEnemies() {
         this.enemies = [];
-        const numEnemies = Math.min(2 + this.level, 8); // Max 8 enemies
+        const numEnemies = Math.max(3, 3 + Math.floor(this.level / 2)); // At least 3 enemies
         
         // Find valid spawn positions (empty spaces in the map)
         const validPositions = [];
@@ -125,7 +233,7 @@ class Game {
                     const dx = x - this.player.x;
                     const dy = y - this.player.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance > 5) { // Minimum distance from player
+                    if (distance > 10) { // Increased minimum distance
                         validPositions.push({ x, y });
                     }
                 }
@@ -141,8 +249,9 @@ class Game {
         // Spawn enemies at random valid positions
         for (let i = 0; i < numEnemies && i < validPositions.length; i++) {
             let type = 'imp';
-            if (this.level >= 3 && Math.random() < 0.3) type = 'cacodemon';
-            if (this.level >= 5 && Math.random() < 0.2) type = 'baron';
+            // More varied enemy types based on level
+            if (this.level >= 2 && Math.random() < 0.4) type = 'cacodemon';
+            if (this.level >= 3 && Math.random() < 0.3) type = 'baron';
             
             const pos = validPositions[i];
             this.enemies.push(new Enemy(pos.x + 0.5, pos.y + 0.5, type));
