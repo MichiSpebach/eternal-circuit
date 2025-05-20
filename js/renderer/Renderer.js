@@ -40,7 +40,7 @@ class Renderer {
         
         for (let i = 0; i < numRays; i++) {
             const rayAngle = player.angle - fov/2 + angleStep * i;
-            const { distance, wallContent } = this.castRay(rayAngle, player, map);
+            const { distance, wallContent } = this.castRay(player, rayAngle, map);
             
             const wallHeight = (this.canvas.height / distance) * 0.5;
             const wallX = i;
@@ -104,26 +104,72 @@ class Renderer {
         }
     }
 
-    castRay(angle, player, map) {
+    castRay(player, angle, map) {
         const rayDirX = Math.cos(angle);
         const rayDirY = Math.sin(angle);
         
-        let distance = 0;
+        // Ray starting position
+        let rayX = player.x;
+        let rayY = player.y;
+        
+        // Length of ray from current position to next x or y-side
+        let sideDistX;
+        let sideDistY;
+        
+        // Length of ray from one x or y-side to next x or y-side
+        const deltaDistX = Math.abs(1 / rayDirX);
+        const deltaDistY = Math.abs(1 / rayDirY);
+        
+        // What direction to step in x or y-direction (either +1 or -1)
+        const stepX = rayDirX >= 0 ? 1 : -1;
+        const stepY = rayDirY >= 0 ? 1 : -1;
+        
+        // Which box of the map we're in
+        let mapX = Math.floor(rayX);
+        let mapY = Math.floor(rayY);
+        
+        // Calculate step and initial sideDist
+        if (rayDirX < 0) {
+            sideDistX = (rayX - mapX) * deltaDistX;
+        } else {
+            sideDistX = (mapX + 1.0 - rayX) * deltaDistX;
+        }
+        if (rayDirY < 0) {
+            sideDistY = (rayY - mapY) * deltaDistY;
+        } else {
+            sideDistY = (mapY + 1.0 - rayY) * deltaDistY;
+        }
+        
+        // Perform DDA
         let hit = false;
+        let side = 0; // Was a NS or a EW wall hit?
         let wallContent = 0;
         
-        while (!hit && distance < 20) {
-            distance += 0.1;
-            const testX = Math.floor(player.x + rayDirX * distance);
-            const testY = Math.floor(player.y + rayDirY * distance);
-            
-            if (testX < 0 || testX >= map[0].length || testY < 0 || testY >= map.length) {
-                hit = true;
-                distance = 20;
-            } else if (map[testY][testX] > 0) {
-                hit = true;
-                wallContent = map[testY][testX];
+        while (!hit) {
+            // Jump to next map square, either in x-direction, or in y-direction
+            if (sideDistX < sideDistY) {
+                sideDistX += deltaDistX;
+                mapX += stepX;
+                side = 0;
+            } else {
+                sideDistY += deltaDistY;
+                mapY += stepY;
+                side = 1;
             }
+            
+            // Check if ray has hit a wall
+            if (map[mapY][mapX] > 0) {
+                hit = true;
+                wallContent = map[mapY][mapX];
+            }
+        }
+        
+        // Calculate distance projected on camera direction
+        let distance;
+        if (side === 0) {
+            distance = (mapX - rayX + (1 - stepX) / 2) / rayDirX;
+        } else {
+            distance = (mapY - rayY + (1 - stepY) / 2) / rayDirY;
         }
         
         return { distance, wallContent };
@@ -144,8 +190,8 @@ class Renderer {
             // Calculate relative angle to player's view
             let relativeAngle = this.normalizeAngle(angle - player.angle);
             
-            // Only draw if enemy is in front of player
-            if (Math.abs(relativeAngle) < Math.PI / 2) {
+            // Only draw if enemy is in front of player and within view distance
+            if (Math.abs(relativeAngle) < Math.PI / 2 && distance < 20) {
                 // Check if there's a clear line of sight to the enemy
                 if (this.hasLineOfSight(player, enemy, map)) {
                     // Calculate screen position
@@ -203,7 +249,7 @@ class Renderer {
             
             if (mapX >= 0 && mapX < map[0].length && 
                 mapY >= 0 && mapY < map.length && 
-                map[mapY][mapX] === 1) {
+                map[mapY][mapX] > 0) { // Changed from === 1 to > 0 to check all wall types
                 return false; // Wall in the way
             }
         }
