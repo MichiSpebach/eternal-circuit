@@ -1,41 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eternal Circuit - Doom-like Game</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #000;
-        }
-        canvas {
-            border: 2px solid #333;
-        }
-    </style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eternal Circuit</title>
+  </head>
+  <body>
     <canvas id="gameCanvas"></canvas>
-    
-    <!-- Game Audio -->
-    <audio id="shootSound" src="sounds/doom/pistol.wav"></audio>
-    <audio id="emptySound" src="sounds/doom/empty.wav"></audio>
-    <audio id="pickupSound" src="sounds/doom/pickup.wav"></audio>
-    <audio id="bgMusic" src="sounds/doom/e1m1.mp3" loop></audio>
-    <audio id="doorSound" src="sounds/doom/door.wav"></audio>
-    <audio id="playerPain" src="sounds/doom/player_pain.wav"></audio>
-    
-    <!-- Load all JavaScript files in the correct order -->
-    <script src="js/audio/AudioManager.js"></script>
-    <script src="js/player/Player.js"></script>
-    <script src="js/weapon/Weapon.js"></script>
-    <script src="js/enemy/Enemy.js"></script>
-    <script src="js/renderer/Renderer.js"></script>
-    <script src="js/game.js"></script>
-</body>
-</html> 
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
